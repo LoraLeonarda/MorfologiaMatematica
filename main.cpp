@@ -75,26 +75,25 @@ class AnalisarImagem
 	private:
 		//
 	public:
-	    Mat ImagemOriginal;
-		void AbrirPreProcessar(string Filename);
+		Mat AbrirPreProcessar(string Filename);
 		Mat ExpansaoMorfologiaMatematica(Mat ImagemBase);
-		Mat DiferencaImagens(Mat ImagemDiff);
+		Mat DiferencaImagens(Mat ImagemBase, Mat ImagemDiff);
 		vector<int> SeguirFronteiras(Mat ImagemBase);
 };
 
 // -----------------------------
 // IMPLEMENTAÇÃO DOS MÉTODOS
 // -----------------------------
-void AnalisarImagem::AbrirPreProcessar(string Filename)
+Mat AnalisarImagem::AbrirPreProcessar(string Filename)
 {
 	// abrir imagem e converter para grayscale
-	ImagemOriginal = imread(Filename, IMREAD_GRAYSCALE);
+	Mat ImagemOriginal = imread(Filename, IMREAD_GRAYSCALE);
 
 	// check!
 	if(ImagemOriginal.empty())
 	{
         cerr << "Imagem \"" << Filename << "\" não foi aberta" << endl;
-		return;
+		return Mat::zeros(Size(1, 1), CV_8UC1);
     }
 	
 	// limiarizar!
@@ -119,6 +118,7 @@ void AnalisarImagem::AbrirPreProcessar(string Filename)
 			}
 		}
 	}
+	return ImagemOriginal;
 }
 Mat AnalisarImagem::ExpansaoMorfologiaMatematica(Mat ImagemBase)
 {
@@ -153,10 +153,10 @@ Mat AnalisarImagem::ExpansaoMorfologiaMatematica(Mat ImagemBase)
 	}
 	return Retorno;
 }
-Mat AnalisarImagem::DiferencaImagens(Mat ImagemDiff)
+Mat AnalisarImagem::DiferencaImagens(Mat ImagemBase, Mat ImagemDiff)
 {
-	int Wid = ImagemOriginal.cols;
-    int Hei = ImagemOriginal.rows;
+	int Wid = ImagemBase.cols;
+    int Hei = ImagemBase.rows;
 	Mat Retorno = Mat::zeros(Size(Wid, Hei), CV_8UC3);
 	// operação principal, loop por todos os pixels
 	for(int Lin=0 ; Lin<Hei ; Lin++)
@@ -164,13 +164,12 @@ Mat AnalisarImagem::DiferencaImagens(Mat ImagemDiff)
 		for(int Col=0 ; Col<Wid ; Col++)
 		{
 			// não é exatamente um diff, mas como a imagem é binária, testa com if !=
-			if(ImagemOriginal.at<uchar>(Lin, Col) != ImagemDiff.at<uchar>(Lin, Col))
+			if(ImagemBase.at<uchar>(Lin, Col) != ImagemDiff.at<uchar>(Lin, Col))
 			{
 				Retorno.at<Vec3b>(Lin, Col) = Vec3b(0, 0, 255);
 			}
 		}
 	}
-	imshow("Diff", Retorno);
 	return Retorno;
 }
 vector<int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
@@ -183,8 +182,9 @@ vector<int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 int main()
 {
 	AnalisarImagem Analisador;
-	Analisador.AbrirPreProcessar(ImagensPaths[0]);
-	Mat imgexp = Analisador.ExpansaoMorfologiaMatematica(Analisador.ImagemOriginal);
-	Mat diff = Analisador.DiferencaImagens(imgexp);
+	Mat img = Analisador.AbrirPreProcessar(ImagensPaths[0]);
+	Mat imgexp = Analisador.ExpansaoMorfologiaMatematica(img);
+	Mat diff = Analisador.DiferencaImagens(img, imgexp);
+	imshow("Diff", diff);
 	waitKey(0);
 }
