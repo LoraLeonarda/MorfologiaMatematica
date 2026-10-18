@@ -97,7 +97,7 @@ Mat AnalisarImagem::AbrirPreProcessar(string Filename)
     }
 	
 	// limiarizar!
-	int Meio = 150;
+	int Limiar = 150;
 	int Wid = ImagemOriginal.cols;
     int Hei = ImagemOriginal.rows;
 	for(int Lin=0 ; Lin<Hei ; Lin++)
@@ -107,14 +107,14 @@ Mat AnalisarImagem::AbrirPreProcessar(string Filename)
 			// aplica filtros fotométricos no pixel se necessário, fins de teste
 			ImagemOriginal.at<uchar>(Lin, Col) = lerp(ImagemOriginal.at<uchar>(Lin, Col), 128, 0.0);
 			
-			// meio termo!
-			if(ImagemOriginal.at<uchar>(Lin, Col) < Meio)
+			// meio termo! (aplica inversão de cores, se menor q limiar -> preto)
+			if(ImagemOriginal.at<uchar>(Lin, Col) <= Limiar)
 			{
-				ImagemOriginal.at<uchar>(Lin, Col) = 0;
+				ImagemOriginal.at<uchar>(Lin, Col) = 255;
 			}
 			else
 			{
-				ImagemOriginal.at<uchar>(Lin, Col) = 255;
+				ImagemOriginal.at<uchar>(Lin, Col) = 0;
 			}
 		}
 	}
