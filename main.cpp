@@ -174,8 +174,63 @@ Mat AnalisarImagem::DiferencaImagens(Mat ImagemBase, Mat ImagemDiff)
 }
 vector<int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 {
-	vector<int> Retorno;
-	// TODO
+
+	int Wid = ImagemBase.cols;
+    int Hei = ImagemBase.rows;
+	vector<int> b0 = (0,0)
+	vector<int> c0 = (0,0)
+
+	// Passo 1
+	// b0 é o ponto mais superior e mais a esquerda dado como 1
+	for(int Lin=0 ; Lin<Hei ; Lin++)
+	{
+		for(int Col=0 ; Col<Wid ; Col++)
+		{
+			if (ImagemBase.at<uchar>(Lin, Col) == 1)
+			{
+				b0 = (Lin, Col)
+				// c0 é o vizinho esquerdo de b0
+				c0 = (Lin-1, Col)
+				Lin - Hei
+				break;
+			}
+		}
+	}
+
+	// Começa na esquerda do pixel, e vai no sentido anti-horário
+	deslocaX = [0, -1, -1, -1, 0, 1, 1, 1]
+	deslocaY = [-1, -1, 0, 1, 1, 1, 0, -1]
+
+	comeco_deslocamentoX = c0 - b0
+	comeco_deslocamentoY = c0 - b0
+	
+	// Examina todos os 8 vizinhos de b0, começando por c0 e indo no sentido horário
+	for(int i = 0; i < 8; i++){
+
+	}
+	
+
+	// b1 é o primeiro vizinho encontrado cujo valor é 1
+	// c1 é o ponto (fundo) imediatamente precedente de b1 na sequência
+
+	// Armazena as localizações de b0 para o passo 5
+
+	// Passo 2
+	// Faça b = b0 e c=c0
+
+	// Passo 3
+	// Faça os 8 vizinhos de b, começando por c e indo no sentido horário, ser denotados como n1,n2...n8.
+	// Encontre o primeiro vizinho dado como 1 e denote ele pelo seu nk
+
+	//Passo 4
+	// Faça b = nk e c = nk-1
+
+	// Passo 5
+	// Repita os passos 3 e 4 até que b = b0
+	// A sequência de b pontos encontrada quando o algoritmo para é o conjunto dos pontos de borda ordenados
+
+	// Segue para o próximo conjunto de bordas
+
 	return Retorno;
 }
 
