@@ -95,7 +95,7 @@ Mat AnalisarImagem::AbrirPreProcessar(string Filename)
         cerr << "Imagem \"" << Filename << "\" não foi aberta" << endl;
 		return Mat::zeros(Size(1, 1), CV_8UC1);
     }
-	
+
 	// limiarizar!
 	int Limiar = 150;
 	int Wid = ImagemOriginal.cols;
@@ -106,7 +106,7 @@ Mat AnalisarImagem::AbrirPreProcessar(string Filename)
 		{
 			// aplica filtros fotométricos no pixel se necessário, fins de teste
 			ImagemOriginal.at<uchar>(Lin, Col) = lerp(ImagemOriginal.at<uchar>(Lin, Col), 128, 0.0);
-			
+
 			// meio termo! (aplica inversão de cores, se menor q limiar -> preto)
 			if(ImagemOriginal.at<uchar>(Lin, Col) <= Limiar)
 			{
@@ -177,8 +177,8 @@ vector<int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 
 	int Wid = ImagemBase.cols;
     int Hei = ImagemBase.rows;
-	vector<int> b0 = (0,0)
-	vector<int> c0 = (0,0)
+	vector<int> b0 = {0,0};
+	vector<int> c0 = {0,0};
 
 	// Passo 1
 	// b0 é o ponto mais superior e mais a esquerda dado como 1
@@ -186,52 +186,57 @@ vector<int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 	{
 		for(int Col=0 ; Col<Wid ; Col++)
 		{
-			if (ImagemBase.at<uchar>(Lin, Col) == 1)
+			if (ImagemBase.at<Vec3b>(Lin, Col) == Vec3b(0, 0, 255))
 			{
-				b0 = (Lin, Col)
+				b0 = {Lin, Col};
 				// c0 é o vizinho esquerdo de b0
-				c0 = (Lin-1, Col)
-				Lin - Hei
+				c0 = {Lin, Col-1};
+				Lin = Hei;
+				Col = Wid;
 				break;
 			}
 		}
 	}
 
-	// Começa na esquerda do pixel, e vai no sentido anti-horário
-	deslocaX = [0, -1, -1, -1, 0, 1, 1, 1]
-	deslocaY = [-1, -1, 0, 1, 1, 1, 0, -1]
+	// Começa na esquerda do pixel, e vai no sentido horário
+	vector<int> deslocaX = {-1, -1,  0,  1,  1,  1,  0, -1};
+	vector<int> deslocaY = { 0, -1, -1, -1,  0,  1,  1,  1};
 
-	comeco_deslocamentoX = c0 - b0
-	comeco_deslocamentoY = c0 - b0
-	
-	// Examina todos os 8 vizinhos de b0, começando por c0 e indo no sentido horário
-	for(int i = 0; i < 8; i++){
+	int looppoint = 0;
 
-	}
-	
+	vector<int> b = b0;
+	vector<int> c = c0;
 
-	// b1 é o primeiro vizinho encontrado cujo valor é 1
-	// c1 é o ponto (fundo) imediatamente precedente de b1 na sequência
+	// stats
+	int qtpixeisborda = 0;
 
-	// Armazena as localizações de b0 para o passo 5
+	// enquanto não chegar na base
+	do{
+		// Examina todos os 8 vizinhos de b0, começando por c0 e indo no sentido horário
+		for(int i=looppoint ; i<999999999 ; i++)
+		{
+    		// loop around
+    		if(i >= 8){i = 0;}
+		    // Obter ponto de comparação
+			c = {b[0]+deslocaY[i], b[1]+deslocaX[i]};
+			// Comparar :D
+			if(ImagemBase.at<Vec3b>(c[0], c[1]) == Vec3b(0, 0, 255))
+			{
+			    looppoint = i-1;
+			    break;
+			}
+		}
+		// Atualizar pontos
+		vector<int> copiab = {b[0], b[1]};
+		b = {c[0], c[1]};
+		c = {copiab[0] + deslocaY[looppoint], copiab[1] + deslocaX[looppoint]};
+		// Salvar Stats
+		qtpixeisborda += 1;
+		// Desenhar na imagem :D
+		ImagemBase.at<Vec3b>(copiab[0], copiab[1]) == Vec3b(255, 0, 0);
+	} while((b[0] != b0[0]) && (b[1] != b0[1]));
 
-	// Passo 2
-	// Faça b = b0 e c=c0
-
-	// Passo 3
-	// Faça os 8 vizinhos de b, começando por c e indo no sentido horário, ser denotados como n1,n2...n8.
-	// Encontre o primeiro vizinho dado como 1 e denote ele pelo seu nk
-
-	//Passo 4
-	// Faça b = nk e c = nk-1
-
-	// Passo 5
-	// Repita os passos 3 e 4 até que b = b0
-	// A sequência de b pontos encontrada quando o algoritmo para é o conjunto dos pontos de borda ordenados
-
-	// Segue para o próximo conjunto de bordas
-
-	return Retorno;
+	return ImagemBase;
 }
 
 int main()
