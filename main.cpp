@@ -78,7 +78,7 @@ class AnalisarImagem
 		Mat AbrirPreProcessar(string Filename);
 		Mat ExpansaoMorfologiaMatematica(Mat ImagemBase);
 		Mat DiferencaImagens(Mat ImagemBase, Mat ImagemDiff);
-		vector<int> SeguirFronteiras(Mat ImagemBase);
+		pair<Mat, int> SeguirFronteiras(Mat ImagemBase);
 };
 
 // -----------------------------
@@ -172,7 +172,7 @@ Mat AnalisarImagem::DiferencaImagens(Mat ImagemBase, Mat ImagemDiff)
 	}
 	return Retorno;
 }
-vector<int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
+pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 {
 
 	int Wid = ImagemBase.cols;
@@ -189,8 +189,10 @@ vector<int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 			if (ImagemBase.at<Vec3b>(Lin, Col) == Vec3b(0, 0, 255))
 			{
 				b0 = {Lin, Col};
+				printf("b0: %d, %d\n", b0[0], b0[1]);
 				// c0 é o vizinho esquerdo de b0
 				c0 = {Lin, Col-1};
+				printf("c0: %d, %d\n", c0[0], c0[1]);
 				Lin = Hei;
 				Col = Wid;
 				break;
@@ -202,16 +204,17 @@ vector<int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 	vector<int> deslocaX = {-1, -1,  0,  1,  1,  1,  0, -1};
 	vector<int> deslocaY = { 0, -1, -1, -1,  0,  1,  1,  1};
 
-	int looppoint = 0;
-
 	vector<int> b = b0;
 	vector<int> c = c0;
+
+	int looppoint = 0;
 
 	// stats
 	int qtpixeisborda = 0;
 
 	// enquanto não chegar na base
 	do{
+		
 		// Examina todos os 8 vizinhos de b0, começando por c0 e indo no sentido horário
 		for(int i=looppoint ; i<999999999 ; i++)
 		{
@@ -220,9 +223,10 @@ vector<int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 		    // Obter ponto de comparação
 			c = {b[0]+deslocaY[i], b[1]+deslocaX[i]};
 			// Comparar :D
-			if(ImagemBase.at<Vec3b>(c[0], c[1]) == Vec3b(0, 0, 255))
+			if(ImagemBase.at<Vec3b>(c[0], c[1]) == Vec3b(0, 0, 255)  || c[0] == b0[0] && c[1] == b0[1])
 			{
-			    looppoint = i-1;
+				// looppint = i - 1 com correção para negativo :D
+			    looppoint = (i + 7) % 8;
 			    break;
 			}
 		}
@@ -230,13 +234,28 @@ vector<int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 		vector<int> copiab = {b[0], b[1]};
 		b = {c[0], c[1]};
 		c = {copiab[0] + deslocaY[looppoint], copiab[1] + deslocaX[looppoint]};
+
+		// Vetor que indica o novo ponto inicial
+		vector<int> vetorBC = {c[0] - b[0], c[1] - b[1]};
+
+		// laço para descobrir o novo ponto incial
+		for(int j = 0; j < 8; j++)
+		{
+			if(vetorBC[0] == deslocaY[j] && vetorBC[1] == deslocaX[j])
+			{
+				looppoint = (j + 7) % 8;
+				break;
+			}
+		}
+
 		// Salvar Stats
 		qtpixeisborda += 1;
 		// Desenhar na imagem :D
-		ImagemBase.at<Vec3b>(copiab[0], copiab[1]) == Vec3b(255, 0, 0);
-	} while((b[0] != b0[0]) && (b[1] != b0[1]));
+		ImagemBase.at<Vec3b>(copiab[0], copiab[1]) = Vec3b(255, 0, 0);
 
-	return ImagemBase;
+	} while((b[0] != b0[0]) || (b[1] != b0[1]));
+
+	return {ImagemBase, qtpixeisborda};
 }
 
 int main()
@@ -247,4 +266,8 @@ int main()
 	Mat diff = Analisador.DiferencaImagens(img, imgexp);
 	imshow("Diff", diff);
 	waitKey(0);
+	pair<Mat, int> borda = Analisador.SeguirFronteiras(diff);
+	imshow("Borda", borda.first);
+	waitKey(0);
+	printf("Quantidade de pixels na borda: %d\n", borda.second);
 }
