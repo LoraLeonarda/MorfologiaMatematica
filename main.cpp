@@ -77,6 +77,9 @@ class AnalisarImagem
 	public:
 		Mat AbrirPreProcessar(string Filename);
 		Mat ExpansaoMorfologiaMatematica(Mat ImagemBase);
+		Mat ErosaoMorfologiaMatematica(Mat ImagemBase);
+		Mat ExpansaoMorfologiaMatematicaAdjacente(Mat ImagemBase);
+		Mat ErosaoMorfologiaMatematicaAdjacente(Mat ImagemBase);
 		Mat DiferencaImagens(Mat ImagemBase, Mat ImagemDiff);
 		pair<Mat, int> SeguirFronteiras(Mat ImagemBase);
 };
@@ -153,6 +156,93 @@ Mat AnalisarImagem::ExpansaoMorfologiaMatematica(Mat ImagemBase)
 	}
 	return Retorno;
 }
+Mat AnalisarImagem::ErosaoMorfologiaMatematica(Mat ImagemBase)
+{
+    // variaveis
+    int Wid = ImagemBase.cols;
+    int Hei = ImagemBase.rows;
+    int KernelSize = 3;
+	int Ko = KernelSize/2;
+	Mat Retorno = Mat::zeros(Size(Wid, Hei), CV_8UC1);
+
+	// operação principal, loop por todos os pixels
+	for(int Lin=0 ; Lin<Hei ; Lin++)
+	{
+		for(int Col=0 ; Col<Wid ; Col++)
+		{
+			// obter maior valor da região
+			uchar Mini=255;
+			// loop da região em volta do kernel
+			for(int KLin=Max(0, Lin-Ko) ; KLin<Min(Hei, Lin+Ko+1) ; KLin++)
+			{
+				for(int KCol=Max(0, Col-Ko) ; KCol<Min(Wid, Col+Ko+1) ; KCol++)
+				{
+					if(ImagemBase.at<uchar>(KLin, KCol) < Mini)
+					{
+						Mini = ImagemBase.at<uchar>(KLin, KCol);
+					}
+				}
+			}
+			// definir intensidade do pixel da imagem de retorno
+			Retorno.at<uchar>(Lin, Col) = Mini;
+		}
+	}
+	return Retorno;
+}
+Mat AnalisarImagem::ExpansaoMorfologiaMatematicaAdjacente(Mat ImagemBase)
+{
+    // variaveis
+    int Wid = ImagemBase.cols;
+    int Hei = ImagemBase.rows;
+	Mat Retorno = Mat::zeros(Size(Wid, Hei), CV_8UC1);
+
+	// operação principal, loop por todos os pixels
+	for(int Lin=1 ; Lin<Hei-1 ; Lin++)
+	{
+		for(int Col=1 ; Col<Wid-1 ; Col++)
+		{
+			// obter maior valor da região
+			uchar Maxi=0;
+			// checar região em volta do kernel
+			if(Maxi < ImagemBase.at<uchar>(Lin, Col)){Maxi = ImagemBase.at<uchar>(Lin, Col);}
+			if(Maxi < ImagemBase.at<uchar>(Lin-1, Col)){Maxi = ImagemBase.at<uchar>(Lin-1, Col);}
+			if(Maxi < ImagemBase.at<uchar>(Lin, Col-1)){Maxi = ImagemBase.at<uchar>(Lin, Col-1);}
+			if(Maxi < ImagemBase.at<uchar>(Lin+1, Col)){Maxi = ImagemBase.at<uchar>(Lin+1, Col);}
+			if(Maxi < ImagemBase.at<uchar>(Lin, Col+1)){Maxi = ImagemBase.at<uchar>(Lin, Col+1);}
+			// definir intensidade do pixel da imagem de retorno
+			Retorno.at<uchar>(Lin, Col) = Maxi;
+		}
+	}
+	return Retorno;
+}
+Mat AnalisarImagem::ErosaoMorfologiaMatematicaAdjacente(Mat ImagemBase)
+{
+    // variaveis
+    int Wid = ImagemBase.cols;
+    int Hei = ImagemBase.rows;
+    int KernelSize = 3;
+	int Ko = KernelSize/2;
+	Mat Retorno = Mat::zeros(Size(Wid, Hei), CV_8UC1);
+
+	// operação principal, loop por todos os pixels
+	for(int Lin=1 ; Lin<Hei-1 ; Lin++)
+	{
+		for(int Col=1 ; Col<Wid-1 ; Col++)
+		{
+		// obter maior valor da região
+		uchar Mini=255;
+		// checar região em volta do kernel
+		if(Mini > ImagemBase.at<uchar>(Lin, Col)){Mini = ImagemBase.at<uchar>(Lin, Col);}
+		if(Mini > ImagemBase.at<uchar>(Lin-1, Col)){Mini = ImagemBase.at<uchar>(Lin-1, Col);}
+		if(Mini > ImagemBase.at<uchar>(Lin, Col-1)){Mini = ImagemBase.at<uchar>(Lin, Col-1);}
+		if(Mini > ImagemBase.at<uchar>(Lin+1, Col)){Mini = ImagemBase.at<uchar>(Lin+1, Col);}
+		if(Mini > ImagemBase.at<uchar>(Lin, Col+1)){Mini = ImagemBase.at<uchar>(Lin, Col+1);}
+		// definir intensidade do pixel da imagem de retorno
+		Retorno.at<uchar>(Lin, Col) = Mini;
+		}
+	}
+	return Retorno;
+}
 Mat AnalisarImagem::DiferencaImagens(Mat ImagemBase, Mat ImagemDiff)
 {
 	int Wid = ImagemBase.cols;
@@ -214,11 +304,12 @@ pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 
 	// enquanto não chegar na base
 	do{
-		
+
 		// Examina todos os 8 vizinhos de b0, começando por c0 e indo no sentido horário
 		for(int i=looppoint ; i<999999999 ; i++)
 		{
     		// loop around
+            //cout << "look mom, im looping! i=" << i << endl;
     		if(i >= 8){i = 0;}
 		    // Obter ponto de comparação
 			c = {b[0]+deslocaY[i], b[1]+deslocaX[i]};
@@ -261,13 +352,31 @@ pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 int main()
 {
 	AnalisarImagem Analisador;
-	Mat img = Analisador.AbrirPreProcessar(ImagensPaths[0]);
-	Mat imgexp = Analisador.ExpansaoMorfologiaMatematica(img);
+	Mat img = Analisador.AbrirPreProcessar(ImagensPaths[15]);
+	// lidar com ruido a base do ódio de classe
+	img = Analisador.ExpansaoMorfologiaMatematica(img);
+	img = Analisador.ExpansaoMorfologiaMatematica(img);
+	img = Analisador.ExpansaoMorfologiaMatematica(img);
+	img = Analisador.ErosaoMorfologiaMatematica(img);
+	img = Analisador.ErosaoMorfologiaMatematica(img);
+	img = Analisador.ErosaoMorfologiaMatematica(img);
+	img = Analisador.ErosaoMorfologiaMatematica(img);
+	img = Analisador.ErosaoMorfologiaMatematica(img);
+	img = Analisador.ErosaoMorfologiaMatematica(img);
+	img = Analisador.ExpansaoMorfologiaMatematica(img);
+	img = Analisador.ExpansaoMorfologiaMatematica(img);
+	img = Analisador.ExpansaoMorfologiaMatematica(img);
+
+	Mat imgexp = Analisador.ErosaoMorfologiaMatematicaAdjacente(img);
 	Mat diff = Analisador.DiferencaImagens(img, imgexp);
 	imshow("Diff", diff);
 	waitKey(0);
 	pair<Mat, int> borda = Analisador.SeguirFronteiras(diff);
 	imshow("Borda", borda.first);
+	waitKey(0);
+
+	pair<Mat, int> newl = Analisador.SeguirFronteiras(borda.first);
+	imshow("Borda", newl.first);
 	waitKey(0);
 	printf("Quantidade de pixels na borda: %d\n", borda.second);
 }
