@@ -270,19 +270,24 @@ pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 	vector<int> b0 = {0,0};
 	vector<int> c0 = {0,0};
 
-	// Passo 1
 	// b0 é o ponto mais superior e mais a esquerda dado como 1
 	for(int Lin=0 ; Lin<Hei ; Lin++)
 	{
 		for(int Col=0 ; Col<Wid ; Col++)
 		{
+
+			// Caso não encontre mais fronteiras
+			if (Lin == Hei-1 && Col == Wid-1)
+			{
+				printf("Não há mais fronteiras a serem seguidas\n");
+				return {ImagemBase, 0};
+			}
+
 			if (ImagemBase.at<Vec3b>(Lin, Col) == Vec3b(0, 0, 255))
 			{
 				b0 = {Lin, Col};
-				printf("b0: %d, %d\n", b0[0], b0[1]);
 				// c0 é o vizinho esquerdo de b0
 				c0 = {Lin, Col-1};
-				printf("c0: %d, %d\n", c0[0], c0[1]);
 				Lin = Hei;
 				Col = Wid;
 				break;
@@ -352,7 +357,7 @@ pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 int main()
 {
 	AnalisarImagem Analisador;
-	Mat img = Analisador.AbrirPreProcessar(ImagensPaths[15]);
+	Mat img = Analisador.AbrirPreProcessar(ImagensPaths[0]);
 	// lidar com ruido a base do ódio de classe
 	img = Analisador.ExpansaoMorfologiaMatematica(img);
 	img = Analisador.ExpansaoMorfologiaMatematica(img);
@@ -369,14 +374,23 @@ int main()
 
 	Mat imgexp = Analisador.ErosaoMorfologiaMatematicaAdjacente(img);
 	Mat diff = Analisador.DiferencaImagens(img, imgexp);
-	imshow("Diff", diff);
-	waitKey(0);
-	pair<Mat, int> borda = Analisador.SeguirFronteiras(diff);
-	imshow("Borda", borda.first);
+	imshow("Imagem", diff);
 	waitKey(0);
 
-	pair<Mat, int> newl = Analisador.SeguirFronteiras(borda.first);
-	imshow("Borda", newl.first);
-	waitKey(0);
-	printf("Quantidade de pixels na borda: %d\n", borda.second);
+	int qtdfolhas = 0;
+	int qtdbordastotal = 0;
+	
+	// Segue bordas de folhas até acabar
+	while (true) {
+		pair<Mat, int> borda = Analisador.SeguirFronteiras(diff);
+		if(borda.second == 0){break;}
+		diff = borda.first;
+		cout << "Folha " << ++qtdfolhas << " - Qtde de pixels de borda: " << borda.second << endl;
+		qtdbordastotal += borda.second;
+		imshow("Imagem", diff);
+		waitKey(0);
+	}
+
+	cout << "Total de folhas encontradas: " << qtdfolhas << endl;
+	cout << "Total de pixels de borda: " << qtdbordastotal << endl;
 }
