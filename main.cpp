@@ -1,6 +1,7 @@
 // Libs
 #include <iostream>
 #include <vector>
+#include <random>
 #include <opencv2/opencv.hpp>
 // Eu te odeio c++
 using namespace std;
@@ -80,6 +81,7 @@ class AnalisarImagem
 		Mat ErosaoMorfologiaMatematica(Mat ImagemBase);
 		Mat ExpansaoMorfologiaMatematicaAdjacente(Mat ImagemBase);
 		Mat ErosaoMorfologiaMatematicaAdjacente(Mat ImagemBase);
+		Mat DenoiseMorfologiaMatematica(Mat ImagemBase, int Passos);
 		Mat DiferencaImagens(Mat ImagemBase, Mat ImagemDiff);
 		pair<Mat, int> SeguirFronteiras(Mat ImagemBase);
 };
@@ -243,6 +245,26 @@ Mat AnalisarImagem::ErosaoMorfologiaMatematicaAdjacente(Mat ImagemBase)
 	}
 	return Retorno;
 }
+Mat AnalisarImagem::DenoiseMorfologiaMatematica(Mat ImagemBase, int Passos)
+{
+	// fechamento + abertura
+	for(int i=0 ; i<Passos ; i++)
+	{
+		ImagemBase = ExpansaoMorfologiaMatematica(ImagemBase);
+
+	}
+	for(int i=0 ; i<Passos ; i++)
+	{
+		ImagemBase = ErosaoMorfologiaMatematica(ImagemBase);
+		ImagemBase = ErosaoMorfologiaMatematica(ImagemBase);
+
+	}
+	for(int i=0 ; i<Passos ; i++)
+	{
+		ImagemBase = ExpansaoMorfologiaMatematica(ImagemBase);
+	}
+	return ImagemBase;
+}
 Mat AnalisarImagem::DiferencaImagens(Mat ImagemBase, Mat ImagemDiff)
 {
 	int Wid = ImagemBase.cols;
@@ -356,21 +378,10 @@ pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 
 int main()
 {
+	srand(time(NULL));
 	AnalisarImagem Analisador;
-	Mat img = Analisador.AbrirPreProcessar(ImagensPaths[0]);
-	// lidar com ruido a base do ódio de classe
-	img = Analisador.ExpansaoMorfologiaMatematica(img);
-	img = Analisador.ExpansaoMorfologiaMatematica(img);
-	img = Analisador.ExpansaoMorfologiaMatematica(img);
-	img = Analisador.ErosaoMorfologiaMatematica(img);
-	img = Analisador.ErosaoMorfologiaMatematica(img);
-	img = Analisador.ErosaoMorfologiaMatematica(img);
-	img = Analisador.ErosaoMorfologiaMatematica(img);
-	img = Analisador.ErosaoMorfologiaMatematica(img);
-	img = Analisador.ErosaoMorfologiaMatematica(img);
-	img = Analisador.ExpansaoMorfologiaMatematica(img);
-	img = Analisador.ExpansaoMorfologiaMatematica(img);
-	img = Analisador.ExpansaoMorfologiaMatematica(img);
+	Mat img = Analisador.AbrirPreProcessar(ImagensPaths[rand()%ImagensPaths.size()]);
+	img = Analisador.DenoiseMorfologiaMatematica(img, 3);
 
 	Mat imgexp = Analisador.ErosaoMorfologiaMatematicaAdjacente(img);
 	Mat diff = Analisador.DiferencaImagens(img, imgexp);
