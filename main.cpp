@@ -1,6 +1,7 @@
 // Libs
 #include <iostream>
 #include <vector>
+#include <random>
 #include <opencv2/opencv.hpp>
 // Eu te odeio c++
 using namespace std;
@@ -62,10 +63,6 @@ int Min(int a, int b)
 	}
 	return b;
 }
-int lerp(int a, int b, float perc)
-{
-	return (int)(((float)b - (float)a)*perc + (float)a);
-}
 
 // -----------------------------
 // CLASSE DE ANALISE
@@ -77,8 +74,12 @@ class AnalisarImagem
 	public:
 		Mat AbrirPreProcessar(string Filename);
 		Mat ExpansaoMorfologiaMatematica(Mat ImagemBase);
+		Mat ErosaoMorfologiaMatematica(Mat ImagemBase);
+		Mat ExpansaoMorfologiaMatematicaAdjacente(Mat ImagemBase);
+		Mat ErosaoMorfologiaMatematicaAdjacente(Mat ImagemBase);
+		Mat DenoiseMorfologiaMatematica(Mat ImagemBase, int Passos);
 		Mat DiferencaImagens(Mat ImagemBase, Mat ImagemDiff);
-		vector<int> SeguirFronteiras(Mat ImagemBase);
+		pair<Mat, int> SeguirFronteiras(Mat ImagemBase);
 };
 
 // -----------------------------
@@ -96,17 +97,27 @@ Mat AnalisarImagem::AbrirPreProcessar(string Filename)
 		return Mat::zeros(Size(1, 1), CV_8UC1);
     }
 	
-	// limiarizar!
-	int Limiar = 150;
+	// definir limiar
 	int Wid = ImagemOriginal.cols;
     int Hei = ImagemOriginal.rows;
+	float Sum = 0.0;
 	for(int Lin=0 ; Lin<Hei ; Lin++)
 	{
 		for(int Col=0 ; Col<Wid ; Col++)
 		{
-			// aplica filtros fotométricos no pixel se necessário, fins de teste
-			ImagemOriginal.at<uchar>(Lin, Col) = lerp(ImagemOriginal.at<uchar>(Lin, Col), 128, 0.0);
-			
+			Sum += (float)ImagemOriginal.at<uchar>(Lin, Col);
+		}
+	}
+	Sum = Sum / (Wid*Hei);
+
+	// limiarizar!
+	int Limiar = (int)Sum;
+	for(int Lin=0 ; Lin<Hei ; Lin++)
+	{
+		for(int Col=0 ; Col<Wid ; Col++)
+		{
+			// aplica filtros no pixel se necessário
+
 			// meio termo! (aplica inversão de cores, se menor q limiar -> preto)
 			if(ImagemOriginal.at<uchar>(Lin, Col) <= Limiar)
 			{
@@ -153,6 +164,113 @@ Mat AnalisarImagem::ExpansaoMorfologiaMatematica(Mat ImagemBase)
 	}
 	return Retorno;
 }
+Mat AnalisarImagem::ErosaoMorfologiaMatematica(Mat ImagemBase)
+{
+    // variaveis
+    int Wid = ImagemBase.cols;
+    int Hei = ImagemBase.rows;
+    int KernelSize = 3;
+	int Ko = KernelSize/2;
+	Mat Retorno = Mat::zeros(Size(Wid, Hei), CV_8UC1);
+
+	// operação principal, loop por todos os pixels
+	for(int Lin=0 ; Lin<Hei ; Lin++)
+	{
+		for(int Col=0 ; Col<Wid ; Col++)
+		{
+			// obter maior valor da região
+			uchar Mini=255;
+			// loop da região em volta do kernel
+			for(int KLin=Max(0, Lin-Ko) ; KLin<Min(Hei, Lin+Ko+1) ; KLin++)
+			{
+				for(int KCol=Max(0, Col-Ko) ; KCol<Min(Wid, Col+Ko+1) ; KCol++)
+				{
+					if(ImagemBase.at<uchar>(KLin, KCol) < Mini)
+					{
+						Mini = ImagemBase.at<uchar>(KLin, KCol);
+					}
+				}
+			}
+			// definir intensidade do pixel da imagem de retorno
+			Retorno.at<uchar>(Lin, Col) = Mini;
+		}
+	}
+	return Retorno;
+}
+Mat AnalisarImagem::ExpansaoMorfologiaMatematicaAdjacente(Mat ImagemBase)
+{
+    // variaveis
+    int Wid = ImagemBase.cols;
+    int Hei = ImagemBase.rows;
+	Mat Retorno = Mat::zeros(Size(Wid, Hei), CV_8UC1);
+
+	// operação principal, loop por todos os pixels
+	for(int Lin=1 ; Lin<Hei-1 ; Lin++)
+	{
+		for(int Col=1 ; Col<Wid-1 ; Col++)
+		{
+			// obter maior valor da região
+			uchar Maxi=0;
+			// checar região em volta do kernel
+			if(Maxi < ImagemBase.at<uchar>(Lin, Col)){Maxi = ImagemBase.at<uchar>(Lin, Col);}
+			if(Maxi < ImagemBase.at<uchar>(Lin-1, Col)){Maxi = ImagemBase.at<uchar>(Lin-1, Col);}
+			if(Maxi < ImagemBase.at<uchar>(Lin, Col-1)){Maxi = ImagemBase.at<uchar>(Lin, Col-1);}
+			if(Maxi < ImagemBase.at<uchar>(Lin+1, Col)){Maxi = ImagemBase.at<uchar>(Lin+1, Col);}
+			if(Maxi < ImagemBase.at<uchar>(Lin, Col+1)){Maxi = ImagemBase.at<uchar>(Lin, Col+1);}
+			// definir intensidade do pixel da imagem de retorno
+			Retorno.at<uchar>(Lin, Col) = Maxi;
+		}
+	}
+	return Retorno;
+}
+Mat AnalisarImagem::ErosaoMorfologiaMatematicaAdjacente(Mat ImagemBase)
+{
+    // variaveis
+    int Wid = ImagemBase.cols;
+    int Hei = ImagemBase.rows;
+    int KernelSize = 3;
+	int Ko = KernelSize/2;
+	Mat Retorno = Mat::zeros(Size(Wid, Hei), CV_8UC1);
+
+	// operação principal, loop por todos os pixels
+	for(int Lin=1 ; Lin<Hei-1 ; Lin++)
+	{
+		for(int Col=1 ; Col<Wid-1 ; Col++)
+		{
+		// obter maior valor da região
+		uchar Mini=255;
+		// checar região em volta do kernel
+		if(Mini > ImagemBase.at<uchar>(Lin, Col)){Mini = ImagemBase.at<uchar>(Lin, Col);}
+		if(Mini > ImagemBase.at<uchar>(Lin-1, Col)){Mini = ImagemBase.at<uchar>(Lin-1, Col);}
+		if(Mini > ImagemBase.at<uchar>(Lin, Col-1)){Mini = ImagemBase.at<uchar>(Lin, Col-1);}
+		if(Mini > ImagemBase.at<uchar>(Lin+1, Col)){Mini = ImagemBase.at<uchar>(Lin+1, Col);}
+		if(Mini > ImagemBase.at<uchar>(Lin, Col+1)){Mini = ImagemBase.at<uchar>(Lin, Col+1);}
+		// definir intensidade do pixel da imagem de retorno
+		Retorno.at<uchar>(Lin, Col) = Mini;
+		}
+	}
+	return Retorno;
+}
+Mat AnalisarImagem::DenoiseMorfologiaMatematica(Mat ImagemBase, int Passos)
+{
+	// fechamento + abertura
+	for(int i=0 ; i<Passos ; i++)
+	{
+		ImagemBase = ExpansaoMorfologiaMatematica(ImagemBase);
+
+	}
+	for(int i=0 ; i<Passos ; i++)
+	{
+		ImagemBase = ErosaoMorfologiaMatematica(ImagemBase);
+		ImagemBase = ErosaoMorfologiaMatematica(ImagemBase);
+
+	}
+	for(int i=0 ; i<Passos ; i++)
+	{
+		ImagemBase = ExpansaoMorfologiaMatematica(ImagemBase);
+	}
+	return ImagemBase;
+}
 Mat AnalisarImagem::DiferencaImagens(Mat ImagemBase, Mat ImagemDiff)
 {
 	int Wid = ImagemBase.cols;
@@ -172,19 +290,169 @@ Mat AnalisarImagem::DiferencaImagens(Mat ImagemBase, Mat ImagemDiff)
 	}
 	return Retorno;
 }
-vector<int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
+pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 {
-	vector<int> Retorno;
-	// TODO
-	return Retorno;
+
+	int Wid = ImagemBase.cols;
+    int Hei = ImagemBase.rows;
+	vector<int> b0 = {0,0};
+	vector<int> c0 = {0,0};
+
+	// b0 é o ponto mais superior e mais a esquerda dado como 1
+	for(int Lin=0 ; Lin<Hei ; Lin++)
+	{
+		for(int Col=0 ; Col<Wid ; Col++)
+		{
+
+			// Caso não encontre mais fronteiras
+			if (Lin == Hei-1 && Col == Wid-1)
+			{
+				printf("Não há mais fronteiras a serem seguidas\n");
+				return {ImagemBase, 0};
+			}
+
+			if (ImagemBase.at<Vec3b>(Lin, Col) == Vec3b(0, 0, 255))
+			{
+				b0 = {Lin, Col};
+				// c0 é o vizinho esquerdo de b0
+				c0 = {Lin, Col-1};
+				Lin = Hei;
+				Col = Wid;
+				break;
+			}
+		}
+	}
+
+	// Começa na esquerda do pixel, e vai no sentido horário
+	vector<int> deslocaX = {-1, -1,  0,  1,  1,  1,  0, -1};
+	vector<int> deslocaY = { 0, -1, -1, -1,  0,  1,  1,  1};
+
+	vector<int> b = b0;
+	vector<int> c = c0;
+
+	int looppoint = 0;
+	int loopbreak = 0;
+
+	// stats
+	int qtpixeisborda = 0;
+
+	// enquanto não chegar na base
+	do{
+
+		// Examina todos os 8 vizinhos de b0, começando por c0 e indo no sentido horário
+		for(int i=looppoint ; i<999999999 ; i++)
+		{
+    		// loop around
+			loopbreak += 1;
+            //cout << "look mom, im looping! i=" << i << endl;
+    		if(i >= 8){i = 0;}
+		    // Obter ponto de comparação
+			c = {b[0]+deslocaY[i], b[1]+deslocaX[i]};
+			// Comparar :D
+			if(ImagemBase.at<Vec3b>(c[0], c[1]) == Vec3b(0, 0, 255)  || c[0] == b0[0] && c[1] == b0[1])
+			{
+				// looppint = i - 1 com correção para negativo :D
+			    looppoint = (i + 7) % 8;
+			    break;
+			}
+			// Checa se entrou em loop infinito (girando em volta de um pixel isolado)
+			if(loopbreak >= 16)
+			{
+				ImagemBase.at<Vec3b>(b[0], b[1]) = Vec3b(255, 0, 0);
+				return SeguirFronteiras(ImagemBase);
+			}
+		}
+		// Atualizar pontos
+		loopbreak = 0;
+		vector<int> copiab = {b[0], b[1]};
+		b = {c[0], c[1]};
+		c = {copiab[0] + deslocaY[looppoint], copiab[1] + deslocaX[looppoint]};
+
+		// Vetor que indica o novo ponto inicial
+		vector<int> vetorBC = {c[0] - b[0], c[1] - b[1]};
+
+		// laço para descobrir o novo ponto incial
+		for(int j = 0; j < 8; j++)
+		{
+			if(vetorBC[0] == deslocaY[j] && vetorBC[1] == deslocaX[j])
+			{
+				looppoint = (j + 7) % 8;
+				break;
+			}
+		}
+
+		// Salvar Stats
+		qtpixeisborda += 1;
+		// Desenhar na imagem :D
+		ImagemBase.at<Vec3b>(copiab[0], copiab[1]) = Vec3b(255, 0, 0);
+
+	} while((b[0] != b0[0]) || (b[1] != b0[1]));
+
+	// checa se é folha valida, se não for, recursiva, se for, retorna
+	if(qtpixeisborda < 300)
+	{
+		return SeguirFronteiras(ImagemBase);
+	}
+	return {ImagemBase, qtpixeisborda};
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+	srand(time(NULL));
 	AnalisarImagem Analisador;
-	Mat img = Analisador.AbrirPreProcessar(ImagensPaths[0]);
-	Mat imgexp = Analisador.ExpansaoMorfologiaMatematica(img);
+	
+	// for(string fn : ImagensPaths)
+	// {
+		// Mat img = Analisador.AbrirPreProcessar(fn);
+		// img = Analisador.DenoiseMorfologiaMatematica(img, 3);
+		// Mat imgexp = Analisador.ErosaoMorfologiaMatematicaAdjacente(img);
+		// Mat diff = Analisador.DiferencaImagens(img, imgexp);
+		// string fno = "ImagensBordaExtraida/bordada_" + fn.substr(20);
+		// cout << "Salvando " << fno << endl;
+		// imwrite(fno, diff);
+	// }
+
+	int imgindex = 0;
+	cout << "Escolha uma imagem entre 0-34" << endl;
+	cin >> imgindex;
+	
+	string Filename = ImagensPaths[imgindex];
+	Mat imgoriginal = imread(Filename, IMREAD_COLOR);
+	Mat img = Analisador.AbrirPreProcessar(Filename);
+	
+	img = Analisador.DenoiseMorfologiaMatematica(img, 5);
+	Mat imgexp = Analisador.ErosaoMorfologiaMatematicaAdjacente(img);
 	Mat diff = Analisador.DiferencaImagens(img, imgexp);
-	imshow("Diff", diff);
+	
+	imshow("Imagem", imgoriginal);
 	waitKey(0);
+
+	int qtdfolhas = 0;
+	int qtdbordastotal = 0;
+	
+	int Wid = imgoriginal.cols;
+    int Hei = imgoriginal.rows;
+	
+	while (true) {
+		pair<Mat, int> borda = Analisador.SeguirFronteiras(diff);
+		if(borda.second == 0){break;}
+		diff = borda.first;
+		cout << "Folha " << ++qtdfolhas << " - Qtde de pixels de borda: " << borda.second << endl;
+		qtdbordastotal += borda.second;
+		for(int Lin=0 ; Lin<Hei ; Lin++)
+		{
+			for(int Col=0 ; Col<Wid ; Col++)
+			{
+				if(diff.at<Vec3b>(Lin, Col) == Vec3b(255, 0, 0))
+				{
+					imgoriginal.at<Vec3b>(Lin, Col) = Vec3b(0, 0, 255);
+				}
+			}
+		}
+		imshow("Imagem", imgoriginal);
+		waitKey(0);
+	}
+
+	cout << "Total de folhas encontradas: " << qtdfolhas << endl;
+	cout << "Total de pixels de borda: " << qtdbordastotal << endl;
 }
