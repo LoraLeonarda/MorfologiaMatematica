@@ -63,10 +63,6 @@ int Min(int a, int b)
 	}
 	return b;
 }
-int lerp(int a, int b, float perc)
-{
-	return (int)(((float)b - (float)a)*perc + (float)a);
-}
 
 // -----------------------------
 // CLASSE DE ANALISE
@@ -100,17 +96,27 @@ Mat AnalisarImagem::AbrirPreProcessar(string Filename)
         cerr << "Imagem \"" << Filename << "\" não foi aberta" << endl;
 		return Mat::zeros(Size(1, 1), CV_8UC1);
     }
-
-	// limiarizar!
-	int Limiar = 150;
+	
+	// definir limiar
 	int Wid = ImagemOriginal.cols;
     int Hei = ImagemOriginal.rows;
+	float Sum = 0.0;
 	for(int Lin=0 ; Lin<Hei ; Lin++)
 	{
 		for(int Col=0 ; Col<Wid ; Col++)
 		{
-			// aplica filtros fotométricos no pixel se necessário, fins de teste
-			ImagemOriginal.at<uchar>(Lin, Col) = lerp(ImagemOriginal.at<uchar>(Lin, Col), 128, 0.0);
+			Sum += (float)ImagemOriginal.at<uchar>(Lin, Col);
+		}
+	}
+	Sum = Sum / (Wid*Hei);
+
+	// limiarizar!
+	int Limiar = (int)Sum;
+	for(int Lin=0 ; Lin<Hei ; Lin++)
+	{
+		for(int Col=0 ; Col<Wid ; Col++)
+		{
+			// aplica filtros no pixel se necessário
 
 			// meio termo! (aplica inversão de cores, se menor q limiar -> preto)
 			if(ImagemOriginal.at<uchar>(Lin, Col) <= Limiar)
@@ -325,6 +331,7 @@ pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 	vector<int> c = c0;
 
 	int looppoint = 0;
+	int loopbreak = 0;
 
 	// stats
 	int qtpixeisborda = 0;
@@ -336,6 +343,7 @@ pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 		for(int i=looppoint ; i<999999999 ; i++)
 		{
     		// loop around
+			loopbreak += 1;
             //cout << "look mom, im looping! i=" << i << endl;
     		if(i >= 8){i = 0;}
 		    // Obter ponto de comparação
@@ -347,8 +355,15 @@ pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 			    looppoint = (i + 7) % 8;
 			    break;
 			}
+			// Checa se entrou em loop infinito (girando em volta de um pixel isolado)
+			if(loopbreak >= 16)
+			{
+				ImagemBase.at<Vec3b>(b[0], b[1]) = Vec3b(255, 0, 0);
+				return SeguirFronteiras(ImagemBase);
+			}
 		}
 		// Atualizar pontos
+		loopbreak = 0;
 		vector<int> copiab = {b[0], b[1]};
 		b = {c[0], c[1]};
 		c = {copiab[0] + deslocaY[looppoint], copiab[1] + deslocaX[looppoint]};
@@ -373,6 +388,11 @@ pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 
 	} while((b[0] != b0[0]) || (b[1] != b0[1]));
 
+	// checa se é folha valida, se não for, recursiva, se for, retorna
+	if(qtpixeisborda < 300)
+	{
+		return SeguirFronteiras(ImagemBase);
+	}
 	return {ImagemBase, qtpixeisborda};
 }
 
@@ -380,25 +400,52 @@ int main()
 {
 	srand(time(NULL));
 	AnalisarImagem Analisador;
-	Mat img = Analisador.AbrirPreProcessar(ImagensPaths[rand()%ImagensPaths.size()]);
-	img = Analisador.DenoiseMorfologiaMatematica(img, 3);
-
+	
+	// for(string fn : ImagensPaths)
+	// {
+		// Mat img = Analisador.AbrirPreProcessar(fn);
+		// img = Analisador.DenoiseMorfologiaMatematica(img, 3);
+		// Mat imgexp = Analisador.ErosaoMorfologiaMatematicaAdjacente(img);
+		// Mat diff = Analisador.DiferencaImagens(img, imgexp);
+		// string fno = "ImagensBordaExtraida/bordada_" + fn.substr(20);
+		// cout << "Salvando " << fno << endl;
+		// imwrite(fno, diff);
+	// }
+	
+	string Filename = ImagensPaths[rand()%ImagensPaths.size()];
+	Mat imgoriginal = imread(Filename, IMREAD_COLOR);
+	Mat img = Analisador.AbrirPreProcessar(Filename);
+	
+	img = Analisador.DenoiseMorfologiaMatematica(img, 5);
 	Mat imgexp = Analisador.ErosaoMorfologiaMatematicaAdjacente(img);
 	Mat diff = Analisador.DiferencaImagens(img, imgexp);
-	imshow("Imagem", diff);
+	
+	imshow("Imagem", imgoriginal);
 	waitKey(0);
 
 	int qtdfolhas = 0;
 	int qtdbordastotal = 0;
 	
-	// Segue bordas de folhas até acabar
+	int Wid = imgoriginal.cols;
+    int Hei = imgoriginal.rows;
+	
 	while (true) {
 		pair<Mat, int> borda = Analisador.SeguirFronteiras(diff);
 		if(borda.second == 0){break;}
 		diff = borda.first;
 		cout << "Folha " << ++qtdfolhas << " - Qtde de pixels de borda: " << borda.second << endl;
 		qtdbordastotal += borda.second;
-		imshow("Imagem", diff);
+		for(int Lin=0 ; Lin<Hei ; Lin++)
+		{
+			for(int Col=0 ; Col<Wid ; Col++)
+			{
+				if(diff.at<Vec3b>(Lin, Col) == Vec3b(255, 0, 0))
+				{
+					imgoriginal.at<Vec3b>(Lin, Col) = Vec3b(0, 0, 255);
+				}
+			}
+		}
+		imshow("Imagem", imgoriginal);
 		waitKey(0);
 	}
 
