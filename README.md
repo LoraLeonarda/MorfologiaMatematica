@@ -15,10 +15,6 @@ Alunos:
 - OpenCV para abrir imagem
 - Morfologia matemática para identificar borda, implementação manual
 - Algoritmo seguidor de fronteiras para percorrer os pixels da mesma, definido nas páginas 814 a 816 do [Livro](https://www.cl72.org/090imagePLib/books/Gonzales,Woods-Digital.Image.Processing.4th.Edition.pdf)
-- Fluxo da interface
-  - Imagem das bordas das folhas em vermelho
-  - Após, ao seguir as bordas, pinta de azul e apresenta a quantidade de pixels de borda daquela folha no terminal
-  - Ao final apresenta totais
 
 ## Como executar:
 
@@ -32,13 +28,6 @@ Alunos:
 
 ### Compilação e Execução do algoritmo
 
-- Para definir a imagem a ser analisada, altere o caminho desejado, de 0-35 em:
-
-```code
-  Mat img = Analisador.AbrirPreProcessar(ImagensPaths[0]);
-```
-
-
 - Para compilar, rode o comando abaixo:
 
 ```bash
@@ -51,6 +40,7 @@ Alunos:
   ./main
 ```
 
+- Escolha a imagem a ser analisada, pelo índice de 0-34, e depois aperte uma tecla para observar cada folha tendo sua borda pintada
 
 
 
