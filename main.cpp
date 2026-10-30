@@ -396,7 +396,7 @@ pair<Mat, int> AnalisarImagem::SeguirFronteiras(Mat ImagemBase)
 	return {ImagemBase, qtpixeisborda};
 }
 
-int main()
+int main(int argc, char* argv[])
 {
 	srand(time(NULL));
 	AnalisarImagem Analisador;
@@ -411,8 +411,12 @@ int main()
 		// cout << "Salvando " << fno << endl;
 		// imwrite(fno, diff);
 	// }
+
+	int imgindex = 0;
+	cout << "Escolha uma imagem entre 0-34" << endl;
+	cin >> imgindex;
 	
-	string Filename = ImagensPaths[rand()%ImagensPaths.size()];
+	string Filename = ImagensPaths[imgindex];
 	Mat imgoriginal = imread(Filename, IMREAD_COLOR);
 	Mat img = Analisador.AbrirPreProcessar(Filename);
 	
